@@ -5,13 +5,10 @@ import sys
 import random
 import asyncio
 import time
+import configparser
 
-# in seconds
-DEFAULT_QUIP_NUM = 645
-DEFAULT_MESSAGE_RATE = 600
-SOUNDS_DIR = '/home/gex/botfiles/sounds/'
 
-BOT_TOKEN = 'ODI1NjQwMzU4MDMzMjI3Nzg2.YGA3gQ.GJhYOXYk1tmjw1V-iPXuBw_PWUk'
+CONFIG = configparser.ConfigParser()
 
 # Dictionary containing quip timer async tasks.  Indexed by guild id.
 quip_timer_tasks = {}
@@ -21,6 +18,7 @@ guild_message_rates = {}
 quip_num = 0
 
 client = discord.Client()
+
 
 def get_voice_client_by_channel(voiceChannel):
     matches = [vc for vc in client.voice_clients if vc.channel == voiceChannel]
@@ -42,11 +40,9 @@ def is_bot_connected_to(voiceChannel):
 
 
 def play_random_quip(vclient):
-    print('quip_num: {0}'.format(quip_num))
     i = random.randrange(quip_num)
-    print('quip selected {0}'.format(i)) #TODO remove
     try:
-        source = discord.FFmpegOpusAudio(SOUNDS_DIR + '{:03d}'.format(i) + '.ogg', executable='/usr/bin/ffmpeg')
+        source = discord.FFmpegOpusAudio(CONFIG['DIR']['SOUND'] + '{:03d}'.format(i) + '.ogg', executable=CONFIG['DIR']['FFMPEG'])
         if vclient.is_playing():
             vclient.stop()
         vclient.play(source)
@@ -75,10 +71,8 @@ async def quip_timer(vc):
     try:
         guild_message_rates[vclient.guild.id]
     except KeyError:
-        guild_message_rates[vclient.guild.id] = DEFAULT_MESSAGE_RATE
+        guild_message_rates[vclient.guild.id] = int(CONFIG['QUIPS']['DEFAULT_RATE'])
 
-    print('Using quip rate {0}'.format(guild_message_rates[vclient.guild.id])) #TODO remove
-    print('members: {0}'.format([i.name for i in vclient.channel.members]))
 
     try:
         while vclient.is_connected() and len(vclient.channel.members) > 0:
@@ -114,7 +108,7 @@ async def on_message(message):
     elif message.content.startswith('$quipspeed'):
         tokens = message.content.split(' ')
         if len(tokens) > 1:
-            rate = DEFAULT_MESSAGE_RATE
+            rate = int(CONFIG['QUIPS']['DEFAULT_RATE'])
             try:
                 rate = int(tokens[1])
                 if (rate < 1):
@@ -145,27 +139,26 @@ $shaddup .... Leaves voice
 $quip ....... Make a quip right now! (not done yet)
 $quipspeed .. Adjust quipping interval in seconds
 $gex ........ This help dialog```""")
+        #TODO: Move text out of source
 
 @client.event
 async def on_ready():
     print('logged in as {0.user.name}'.format(client))
-    discord.opus.load_opus('/usr/lib/x86_64-linux-gnu/libopus.so.0.8.0')
+    discord.opus.load_opus(CONFIG['DIR']['OPUS'])
 
     #TODO: look at how voice_clients are managed
 
 
 def main():
-    #Calculate number of files in sound file dir
-    try:
-        #Minus 1 to include the zero index
-        global quip_num
-        quip_num = len([f for f in os.listdir(SOUNDS_DIR) if f.endswith('.ogg')]) - 1
-        print('total quips found {0}'.format(quip_num + 1)) #TODO remove
-    except FileNotFoundError as e:
-        print(e)
-        quip_num = DEFAULT_QUIP_NUM
+    CONFIG.read('bot.ini')
+    CONFIG.read('botsecrets.ini')
 
-    asyncio.run(client.run(BOT_TOKEN))
+    #Calculate number of files in sound file dir
+    global quip_num
+    quip_num = len([f for f in os.listdir(CONFIG['DIR']['SOUND']) if f.endswith('.ogg')]) - 1
+    print('total quips found {0}'.format(quip_num + 1))
+
+    asyncio.run(client.run(CONFIG['SECRETS']['TOKEN']))
 
 if __name__ == '__main__':
     main()

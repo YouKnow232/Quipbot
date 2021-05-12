@@ -1,6 +1,9 @@
 # This folder contains the sound files the bot will read from
 sounds/
 
+# Contains confidential bot data such as the api token
+botsecrets.ini
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
