@@ -1,0 +1,29 @@
+{
+    "commands": {
+        "prefix": "!",
+        "join": "tailtime",
+        "leave": "shaddup",
+        "frequency": "quipspeed",
+        "quip": "quip",
+        "help": "gex"
+    },
+    "commandDesc": {
+        "join": "Joins voice",
+        "leave": "Leaves voice",
+        "frequency": "Adjust quipping interval in seconds",
+        "quip": "Make a quip right now! (WIP)",
+        "help": "This help dialog"
+    },
+    "errors": {
+        "generic": "It ain't tail time yet!",
+        "joinNotInVoice": "Join a voice channel before initiating Tail Time!",
+        "quipValErr": "That ain't a real number. Gimme a REAL number!",
+        "quipNoParam": "Gimme a number"
+    },
+    "responses": {
+        "quip-comment": "new quip rate will be passed to {0}",
+        "quip": "Making a quip every {0} seconds"
+    },
+    "help-comment": "The bot will programatically list commands and their desciprtions on a newline after this help text.",
+    "help": "GEX BOT\n\ncommands:"
+}

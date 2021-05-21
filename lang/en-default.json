@@ -1,0 +1,29 @@
+{
+    "commands": {
+        "prefix": "!",
+        "join": "join",
+        "leave": "leave",
+        "frequency": "frequency",
+        "quip": "quip",
+        "help": "help"
+    },
+    "commandDesc": {
+        "join": "Joins voice",
+        "leave": "Leaves voice",
+        "frequency": "Adjust quipping interval in seconds",
+        "quip": "Make a quip right now! (WIP)",
+        "help": "This help dialog"
+    },
+    "errors": {
+        "generic": "Invalid command.",
+        "joinNotInVoice": "Join a voice channel before requesting.",
+        "quipValErr": "A valid number is required.",
+        "quipNoParam": "A number is required."
+    },
+    "responses": {
+        "quip-comment": "new quip rate will be passed to {0}",
+        "quip": "Quip frequency set to {0} seconds."
+    },
+    "help-comment": "The bot will programatically list commands and their desciprtions on a newline after this help text.",
+    "help": "QUIP BOT\n\ncommands:"
+}

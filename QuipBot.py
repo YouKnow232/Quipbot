@@ -6,9 +6,13 @@ import random
 import asyncio
 import time
 import configparser
+import json
 
 
-CONFIG = configparser.ConfigParser()
+_CONFIG = configparser.ConfigParser()
+_LANG = None
+# _LANG shorthand
+_PREFIX = None
 
 # Dictionary containing quip timer async tasks.  Indexed by guild id.
 quip_timer_tasks = {}
@@ -42,7 +46,7 @@ def is_bot_connected_to(voiceChannel):
 def play_random_quip(vclient):
     i = random.randrange(quip_num)
     try:
-        source = discord.FFmpegOpusAudio(CONFIG['DIR']['SOUND'] + '{:03d}'.format(i) + '.ogg', executable=CONFIG['DIR']['FFMPEG'])
+        source = discord.FFmpegOpusAudio(_CONFIG['DIR']['SOUND'] + '{:03d}'.format(i) + '.ogg', executable=_CONFIG['DIR']['FFMPEG'])
         if vclient.is_playing():
             vclient.stop()
         vclient.play(source)
@@ -71,7 +75,7 @@ async def quip_timer(vc):
     try:
         guild_message_rates[vclient.guild.id]
     except KeyError:
-        guild_message_rates[vclient.guild.id] = int(CONFIG['QUIPS']['DEFAULT_RATE'])
+        guild_message_rates[vclient.guild.id] = int(_CONFIG['QUIPS']['DEFAULT_RATE'])
 
 
     try:
@@ -87,9 +91,9 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    elif message.content.startswith('$tailtime'):
+    elif message.content.startswith(_PREFIX + _LANG['commands']['join']):
         if not discord.opus.is_loaded():
-            print('opus isn\'t loaded')
+            print('opus isn\'t loaded', file=stderr)
             return
         
         vchannel = message.author.voice.channel
@@ -97,18 +101,18 @@ async def on_message(message):
             await vchannel.connect()
             quip_timer_tasks[message.guild.id] = asyncio.create_task(quip_timer(vchannel))
         else:
-            await message.channel.send('Join a voice channel before initiating Tail Time!')
+            await message.channel.send(_LANG['errors']['joinNotInVoice'])
 
-    elif message.content.startswith('$shaddup'):
+    elif message.content.startswith(_PREFIX + _LANG['commands']['leave']):
         vclient = get_voice_client_by_guild(message.guild)
 
         if vclient is not None and vclient.is_connected:
             await vclient.disconnect()
 
-    elif message.content.startswith('$quipspeed'):
+    elif message.content.startswith(_PREFIX + _LANG['commands']['frequency']):
         tokens = message.content.split(' ')
         if len(tokens) > 1:
-            rate = int(CONFIG['QUIPS']['DEFAULT_RATE'])
+            rate = int(_CONFIG['QUIPS']['DEFAULT_RATE'])
             try:
                 rate = int(tokens[1])
                 if (rate < 1):
@@ -120,46 +124,50 @@ async def on_message(message):
                 if usrVC is not None and get_voice_client_by_channel(usrVC) is not None and quip_timer_exists(message.guild):
                     reset_quip_timer(usrVC)
                 
-                await message.channel.send('Making a quip every {0} seconds'.format(rate))
+                await message.channel.send(_LANG['responses']['quip'].format(rate))
             except ValueError:
-                await message.channel.send('That ain\'t a real number.  Gimme a REAL number!')
+                await message.channel.send(_LANG['errors']['quipValErr'])
         else:
-            await message.channel.send('Gimme a number.')
+            await message.channel.send(_LANG['errors']['quipNoParam'])
 
-    elif message.content.startswith('$quip'):
-        await message.channel.send('It ain\'t tail time yet!')
+    elif message.content.startswith(_PREFIX + _LANG['commands']['quip']):
+        await message.channel.send(_LANG['errors']['generic'])
 
-    elif message.content.startswith('$gex'):
-        await message.channel.send("""```
-GEX BOT
+    elif message.content.startswith(_PREFIX + _LANG['commands']['help']):
+        maxLen = len(max(_LANG['commands']))
+        formatStr = '{{0:<{0}}}{{1}}'.format(maxLen+3)
+        rows = map(lambda c, d: formatStr.format(c, d), _LANG['commands'], _LANG['commandDesc'])
+        commands = '\n'.join(rows)
 
-commands:
-$tailtime ... Joins voice
-$shaddup .... Leaves voice
-$quip ....... Make a quip right now! (not done yet)
-$quipspeed .. Adjust quipping interval in seconds
-$gex ........ This help dialog```""")
-        #TODO: Move text out of source
+        await message.channel.send(_LANG['help']+'\n'+commands)
 
 @client.event
 async def on_ready():
     print('logged in as {0.user.name}'.format(client))
-    discord.opus.load_opus(CONFIG['DIR']['OPUS'])
+    discord.opus.load_opus(_CONFIG['DIR']['OPUS'])
 
     #TODO: look at how voice_clients are managed
 
 
 def main():
-    CONFIG.read('bot.ini')
-    CONFIG.read('botsecrets.ini')
-
-    #Calculate number of files in sound file dir
+    global _LANG
+    global _PREFIX
     global quip_num
-    quip_num = len([f for f in os.listdir(CONFIG['DIR']['SOUND']) if f.endswith('.ogg')]) - 1
+
+    _CONFIG.read('bot.ini')
+    _CONFIG.read('botsecrets.ini')
+
+    with open(_CONFIG['DIR']['LANG']) as f:
+        _LANG = json.load(f)
+
+    _PREFIX = _LANG['commands']['prefix']
+
+
+    # Calculate number of files in sound file dir
+    quip_num = len([f for f in os.listdir(_CONFIG['DIR']['SOUND']) if f.endswith('.ogg')]) - 1
     print('total quips found {0}'.format(quip_num + 1))
 
-    asyncio.run(client.run(CONFIG['SECRETS']['TOKEN']))
+    asyncio.run(client.run(_CONFIG['SECRETS']['TOKEN']))
 
 if __name__ == '__main__':
     main()
-
