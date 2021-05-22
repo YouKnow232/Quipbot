@@ -1,4 +1,5 @@
 # Contains confidential bot data such as the api token
+bot.ini
 botsecrets.ini
 
 # Byte-compiled / optimized / DLL files
