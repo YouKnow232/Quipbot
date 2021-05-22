@@ -90,7 +90,7 @@ async def quip_timer(vc):
 
     try:
         print(len(vclient.channel.members))
-        while vclient.is_connected() and len(vclient.channel.members) > 1:
+        while vclient.is_connected():
             play_random_quip(vclient)
             await asyncio.sleep(guild_message_rates[vclient.guild.id])
     except asyncio.CancelledError:
@@ -168,7 +168,7 @@ def sysCheck():
 
     if sys.platform == 'linux' or sys.platform == 'linux2':
         _PLATFORM = Platform.LINUX
-        _ERROROUT = stderr
+        _ERROROUT = sys.stderr
         print('detected linux')
     elif sys.platform == 'win32' or sys.platform == 'win64':
         _PLATFORM = Platform.WINDOWS
