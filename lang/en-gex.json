@@ -1,6 +1,6 @@
 {
+    "commandPrefix": "$",
     "commands": {
-        "prefix": "!",
         "join": "tailtime",
         "leave": "shaddup",
         "frequency": "quipspeed",

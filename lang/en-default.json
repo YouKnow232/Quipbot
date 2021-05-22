@@ -1,6 +1,6 @@
 {
+    "commandPrefix": "!",
     "commands": {
-        "prefix": "!",
         "join": "join",
         "leave": "leave",
         "frequency": "frequency",

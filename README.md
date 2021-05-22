@@ -14,6 +14,7 @@ A Discord bot that will make perodic quips in your voice channel
 - `pip install configparser`
 - `pip install asyncio`
 - `pip install discord.py`
+- If running on Windows `pip install discord.py[voice]`
 - Configure dependency directories in `bot.ini`
 - Paste bot token into `botsecrets.ini`
 - Launch with `python3 Gex.py`
