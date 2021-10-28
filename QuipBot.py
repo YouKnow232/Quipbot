@@ -1,10 +1,8 @@
 import discord
-import io
 import os
 import sys
 import random
 import asyncio
-import time
 import configparser
 import json
 import enum
@@ -14,11 +12,12 @@ class Platform(enum.Enum):
     WINDOWS = 2,
     MAC = 3,
 
+_SUPPORTED_FILETYPES = ('.ogg', '.wav')
 _PLATFORM = None
 _ERROROUT = None
 _CONFIG = configparser.ConfigParser()
 _LANG = None
-# _LANG['commands']['prefix'] shorthand
+# _PREFIX is a shorthand for = _LANG['commands']['prefix']
 _PREFIX = None
 
 # Dictionary containing quip timer async tasks.  Indexed by guild id.
@@ -51,16 +50,19 @@ def is_bot_connected_to(voiceChannel):
 
 
 def play_random_quip(vclient):
-    i = random.randrange(quip_num)
+    quips = [f for f in os.listdir(_CONFIG['DIR']['SOUND']) if os.path.isfile(os.path.join(_CONFIG['DIR']['SOUND'], f))]
+    quips = [q for q in quips if q.endswith(_SUPPORTED_FILETYPES)]
+    quip = random.choice(quips)
+
     try:
-        print('Playing quip: ' + _CONFIG['DIR']['SOUND'] + '{:03d}'.format(i) + '.ogg')
-        source = discord.FFmpegOpusAudio(_CONFIG['DIR']['SOUND'] + '{:03d}'.format(i) + '.ogg', executable=_CONFIG['DIR']['FFMPEG'])
+        print('Playing quip: {0}'.format(quip))
+        source = discord.FFmpegOpusAudio(_CONFIG['DIR']['SOUND'] + quip, executable=_CONFIG['DIR']['FFMPEG'])
+
         if vclient.is_playing():
             vclient.stop()
         vclient.play(source)
-    except FileNotFoundError as e:
-        print(e, file=_ERROROUT)
-    except discord.errors.ClientException as e:
+
+    except (FileNotFoundError, discord.errors.ClientException) as e:
         print(e, file=_ERROROUT)
     except Exception as e:
         raise e
@@ -89,7 +91,7 @@ async def quip_timer(vc):
 
 
     try:
-        print(len(vclient.channel.members))
+        print("current VC member count: {0}".format(len(vclient.channel.members)))
         while vclient.is_connected():
             play_random_quip(vclient)
             await asyncio.sleep(guild_message_rates[vclient.guild.id])
@@ -102,11 +104,8 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    # JOIN
     elif message.content.startswith(_PREFIX + _LANG['commands']['join']):
-        if _PLATFORM == 'linux' and not discord.opus.is_loaded():
-            print('opus isn\'t loaded', file=_ERROROUT)
-            return
-        
         vchannel = message.author.voice.channel
         if (vchannel is not None and not is_bot_connected_to(vchannel)):
             await vchannel.connect()
@@ -114,12 +113,14 @@ async def on_message(message):
         else:
             await message.channel.send(_LANG['errors']['joinNotInVoice'])
 
+    # LEAVE
     elif message.content.startswith(_PREFIX + _LANG['commands']['leave']):
         vclient = get_voice_client_by_guild(message.guild)
 
         if vclient is not None and vclient.is_connected:
             await vclient.disconnect()
 
+    # FREQUENCY
     elif message.content.startswith(_PREFIX + _LANG['commands']['frequency']):
         tokens = message.content.split(' ')
         if len(tokens) > 1:
@@ -141,9 +142,11 @@ async def on_message(message):
         else:
             await message.channel.send(_LANG['errors']['quipNoParam'])
 
+    # QUIP
     elif message.content.startswith(_PREFIX + _LANG['commands']['quip']):
         await message.channel.send(_LANG['errors']['generic'])
 
+    # HELP
     elif message.content.startswith(_PREFIX + _LANG['commands']['help']):
         maxLen = len(max(_LANG['commands'].values()))
         formatStr = '{{0:<{0}}}{{1}}'.format(maxLen+3)
@@ -153,11 +156,10 @@ async def on_message(message):
 
         await message.channel.send('```'+_LANG['help']+'\n'+commands+'```')
 
+
 @client.event
 async def on_ready():
     print('logged in as {0.user.name}'.format(client))
-    if _PLATFORM == 'linux':
-        discord.opus.load_opus(_CONFIG['DIR']['OPUS'])
 
     #TODO: look at how voice_clients are managed
 
@@ -172,10 +174,11 @@ def sysCheck():
         print('detected linux')
     elif sys.platform == 'win32' or sys.platform == 'win64':
         _PLATFORM = Platform.WINDOWS
-        _ERROROUT = open(_CONFIG['DIR']['ERRLOG'], mode='a')
+        _ERROROUT = sys.stderr
         print('detected windows')
     elif sys.platform == 'darwin':
         _PLATFORM = Platform.MAC
+        _ERROROUT = sys.stderr
         print('detected mac')
 
 def main():
@@ -194,7 +197,7 @@ def main():
     _PREFIX = _LANG['commandPrefix']
 
     # Calculate number of files in sound file dir
-    quip_num = len([f for f in os.listdir(_CONFIG['DIR']['SOUND']) if f.endswith('.ogg')]) - 1
+    quip_num = len([f for f in os.listdir(_CONFIG['DIR']['SOUND']) if f.endswith(_SUPPORTED_FILETYPES)]) - 1
     print('total quips found {0}'.format(quip_num + 1))
 
     asyncio.run(client.run(_CONFIG['SECRETS']['TOKEN']))

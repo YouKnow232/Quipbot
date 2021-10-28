@@ -1,0 +1,29 @@
+{
+    "commandPrefix": "$",
+    "commands": {
+        "join": "join",
+        "leave": "leave",
+        "frequency": "freq",
+        "quip": "nyaa",
+        "help": "neco"
+    },
+    "commandDesc": {
+        "join": "Joins voice",
+        "leave": "Leaves voice",
+        "frequency": "Adjust quipping interval in seconds",
+        "quip": "Make a funny cat noise (WIP)",
+        "help": "Shows this helpful dialog"
+    },
+    "errors": {
+        "generic": "Nyoo way!",
+        "joinNotInVoice": "Join a voice channel first, nyaa!",
+        "quipValErr": "Nya?",
+        "quipNoParam": "Gimme a number"
+    },
+    "responses": {
+        "quip-comment": "new quip rate will be passed to {0}",
+        "quip": "You'll hear me every {0} seconds"
+    },
+    "help-comment": "The bot will programatically list commands and their desciprtions on a newline after this help text.",
+    "help": "NECO BOT\n\ncommands:"
+}
