@@ -1,7 +1,6 @@
 [DIR]
 LANG = ./lang/en-default.json
 SOUND = ./sounds/
-OPUS = {opus decoder binary}
 FFMPEG = {your ffmpeg binary}
 ERRLOG = ./logs/error.log
 

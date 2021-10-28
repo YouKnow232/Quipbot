@@ -55,20 +55,14 @@ def play_random_quip(vclient):
     quip = random.choice(quips)
 
     try:
-        print('Playing quip: ' + quip)
-
-        if quip.endswith('.ogg'):
-            source = discord.FFmpegOpusAudio(_CONFIG['DIR']['SOUND'] + quip, executable=_CONFIG['DIR']['FFMPEG'])
-        elif quip.endswith('.wav'):
-            source = discord.FFmpegPCMAudio(_CONFIG['DIR']['SOUND'] + quip, executable=_CONFIG['DIR']['FFMPEG'])
+        print('Playing quip: {0}'.format(quip))
+        source = discord.FFmpegOpusAudio(_CONFIG['DIR']['SOUND'] + quip, executable=_CONFIG['DIR']['FFMPEG'])
 
         if vclient.is_playing():
             vclient.stop()
         vclient.play(source)
 
-    except FileNotFoundError as e:
-        print(e, file=_ERROROUT)
-    except discord.errors.ClientException as e:
+    except (FileNotFoundError, discord.errors.ClientException) as e:
         print(e, file=_ERROROUT)
     except Exception as e:
         raise e
@@ -97,8 +91,8 @@ async def quip_timer(vc):
 
 
     try:
-        print("current VC member count: " + len(vclient.channel.members))
-        while vclient.is_connected() and len(vclient.channel.members) > 1:
+        print("current VC member count: {0}".format(len(vclient.channel.members)))
+        while vclient.is_connected():
             play_random_quip(vclient)
             await asyncio.sleep(guild_message_rates[vclient.guild.id])
     except asyncio.CancelledError:
@@ -112,10 +106,6 @@ async def on_message(message):
 
     # JOIN
     elif message.content.startswith(_PREFIX + _LANG['commands']['join']):
-        if _PLATFORM == 'linux' and not discord.opus.is_loaded():
-            print('opus isn\'t loaded', file=_ERROROUT)
-            return
-        
         vchannel = message.author.voice.channel
         if (vchannel is not None and not is_bot_connected_to(vchannel)):
             await vchannel.connect()
@@ -154,12 +144,7 @@ async def on_message(message):
 
     # QUIP
     elif message.content.startswith(_PREFIX + _LANG['commands']['quip']):
-        vclient = get_voice_client_by_channel(message.author.voice.channel)
-        source = discord.FFmpegPCMAudio(_CONFIG['DIR']['SOUND'] + "Neco_B2AA005.wav", executable=_CONFIG['DIR']['FFMPEG'])
-
-        if vclient.is_playing():
-            vclient.stop()
-        vclient.play(source)
+        await message.channel.send(_LANG['errors']['generic'])
 
     # HELP
     elif message.content.startswith(_PREFIX + _LANG['commands']['help']):
@@ -175,8 +160,6 @@ async def on_message(message):
 @client.event
 async def on_ready():
     print('logged in as {0.user.name}'.format(client))
-    if _PLATFORM == 'linux':
-        discord.opus.load_opus(_CONFIG['DIR']['OPUS'])
 
     #TODO: look at how voice_clients are managed
 
@@ -187,14 +170,15 @@ def sysCheck():
 
     if sys.platform == 'linux' or sys.platform == 'linux2':
         _PLATFORM = Platform.LINUX
-        _ERROROUT = stderr
+        _ERROROUT = sys.stderr
         print('detected linux')
     elif sys.platform == 'win32' or sys.platform == 'win64':
         _PLATFORM = Platform.WINDOWS
-        _ERROROUT = open(_CONFIG['DIR']['ERRLOG'], mode='a')
+        _ERROROUT = sys.stderr
         print('detected windows')
     elif sys.platform == 'darwin':
         _PLATFORM = Platform.MAC
+        _ERROROUT = sys.stderr
         print('detected mac')
 
 def main():
