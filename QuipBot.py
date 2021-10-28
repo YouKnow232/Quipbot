@@ -12,14 +12,13 @@ class Platform(enum.Enum):
     WINDOWS = 2,
     MAC = 3,
 
-_FILETYPES = ('.ogg', '.wav')
+_SUPPORTED_FILETYPES = ('.ogg', '.wav')
 _PLATFORM = None
 _ERROROUT = None
 _CONFIG = configparser.ConfigParser()
 _LANG = None
 # _PREFIX is a shorthand for = _LANG['commands']['prefix']
 _PREFIX = None
-_QUIP_DIR_ARR = []
 
 # Dictionary containing quip timer async tasks.  Indexed by guild id.
 quip_timer_tasks = {}
@@ -52,7 +51,7 @@ def is_bot_connected_to(voiceChannel):
 
 def play_random_quip(vclient):
     quips = [f for f in os.listdir(_CONFIG['DIR']['SOUND']) if os.path.isfile(os.path.join(_CONFIG['DIR']['SOUND'], f))]
-    quips = [q for q in quips if q.endswith(_FILETYPES)]
+    quips = [q for q in quips if q.endswith(_SUPPORTED_FILETYPES)]
     quip = random.choice(quips)
 
     try:
@@ -61,7 +60,7 @@ def play_random_quip(vclient):
         if quip.endswith('.ogg'):
             source = discord.FFmpegOpusAudio(_CONFIG['DIR']['SOUND'] + quip, executable=_CONFIG['DIR']['FFMPEG'])
         elif quip.endswith('.wav'):
-            source = discord.FFmpegPCMAudio(_CONFIG['DIR']['SOUND'] +quip, executable=_CONFIG['DIR']['FFMPEG'])
+            source = discord.FFmpegPCMAudio(_CONFIG['DIR']['SOUND'] + quip, executable=_CONFIG['DIR']['FFMPEG'])
 
         if vclient.is_playing():
             vclient.stop()
@@ -98,7 +97,7 @@ async def quip_timer(vc):
 
 
     try:
-        print(len(vclient.channel.members))
+        print("current VC member count: " + len(vclient.channel.members))
         while vclient.is_connected() and len(vclient.channel.members) > 1:
             play_random_quip(vclient)
             await asyncio.sleep(guild_message_rates[vclient.guild.id])
@@ -111,6 +110,7 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    # JOIN
     elif message.content.startswith(_PREFIX + _LANG['commands']['join']):
         if _PLATFORM == 'linux' and not discord.opus.is_loaded():
             print('opus isn\'t loaded', file=_ERROROUT)
@@ -123,12 +123,14 @@ async def on_message(message):
         else:
             await message.channel.send(_LANG['errors']['joinNotInVoice'])
 
+    # LEAVE
     elif message.content.startswith(_PREFIX + _LANG['commands']['leave']):
         vclient = get_voice_client_by_guild(message.guild)
 
         if vclient is not None and vclient.is_connected:
             await vclient.disconnect()
 
+    # FREQUENCY
     elif message.content.startswith(_PREFIX + _LANG['commands']['frequency']):
         tokens = message.content.split(' ')
         if len(tokens) > 1:
@@ -150,9 +152,16 @@ async def on_message(message):
         else:
             await message.channel.send(_LANG['errors']['quipNoParam'])
 
+    # QUIP
     elif message.content.startswith(_PREFIX + _LANG['commands']['quip']):
-        await message.channel.send(_LANG['errors']['generic'])
+        vclient = get_voice_client_by_channel(message.author.voice.channel)
+        source = discord.FFmpegPCMAudio(_CONFIG['DIR']['SOUND'] + "Neco_B2AA005.wav", executable=_CONFIG['DIR']['FFMPEG'])
 
+        if vclient.is_playing():
+            vclient.stop()
+        vclient.play(source)
+
+    # HELP
     elif message.content.startswith(_PREFIX + _LANG['commands']['help']):
         maxLen = len(max(_LANG['commands'].values()))
         formatStr = '{{0:<{0}}}{{1}}'.format(maxLen+3)
@@ -161,6 +170,7 @@ async def on_message(message):
         commands = '\n'.join(rows)
 
         await message.channel.send('```'+_LANG['help']+'\n'+commands+'```')
+
 
 @client.event
 async def on_ready():
@@ -203,7 +213,7 @@ def main():
     _PREFIX = _LANG['commandPrefix']
 
     # Calculate number of files in sound file dir
-    quip_num = len([f for f in os.listdir(_CONFIG['DIR']['SOUND']) if f.endswith(_FILETYPES)]) - 1
+    quip_num = len([f for f in os.listdir(_CONFIG['DIR']['SOUND']) if f.endswith(_SUPPORTED_FILETYPES)]) - 1
     print('total quips found {0}'.format(quip_num + 1))
 
     asyncio.run(client.run(_CONFIG['SECRETS']['TOKEN']))
