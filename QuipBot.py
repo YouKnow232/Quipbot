@@ -1,10 +1,8 @@
 import discord
-import io
 import os
 import sys
 import random
 import asyncio
-import time
 import configparser
 import json
 import enum
@@ -14,12 +12,14 @@ class Platform(enum.Enum):
     WINDOWS = 2,
     MAC = 3,
 
+_FILETYPES = ('.ogg', '.wav')
 _PLATFORM = None
 _ERROROUT = None
 _CONFIG = configparser.ConfigParser()
 _LANG = None
-# _LANG['commands']['prefix'] shorthand
+# _PREFIX is a shorthand for = _LANG['commands']['prefix']
 _PREFIX = None
+_QUIP_DIR_ARR = []
 
 # Dictionary containing quip timer async tasks.  Indexed by guild id.
 quip_timer_tasks = {}
@@ -51,13 +51,22 @@ def is_bot_connected_to(voiceChannel):
 
 
 def play_random_quip(vclient):
-    i = random.randrange(quip_num)
+    quips = [f for f in os.listdir(_CONFIG['DIR']['SOUND']) if os.path.isfile(os.path.join(_CONFIG['DIR']['SOUND'], f))]
+    quips = [q for q in quips if q.endswith(_FILETYPES)]
+    quip = random.choice(quips)
+
     try:
-        print('Playing quip: ' + _CONFIG['DIR']['SOUND'] + '{:03d}'.format(i) + '.ogg')
-        source = discord.FFmpegOpusAudio(_CONFIG['DIR']['SOUND'] + '{:03d}'.format(i) + '.ogg', executable=_CONFIG['DIR']['FFMPEG'])
+        print('Playing quip: ' + quip)
+
+        if quip.endswith('.ogg'):
+            source = discord.FFmpegOpusAudio(_CONFIG['DIR']['SOUND'] + quip, executable=_CONFIG['DIR']['FFMPEG'])
+        elif quip.endswith('.wav'):
+            source = discord.FFmpegPCMAudio(_CONFIG['DIR']['SOUND'] +quip, executable=_CONFIG['DIR']['FFMPEG'])
+
         if vclient.is_playing():
             vclient.stop()
         vclient.play(source)
+
     except FileNotFoundError as e:
         print(e, file=_ERROROUT)
     except discord.errors.ClientException as e:
@@ -194,7 +203,7 @@ def main():
     _PREFIX = _LANG['commandPrefix']
 
     # Calculate number of files in sound file dir
-    quip_num = len([f for f in os.listdir(_CONFIG['DIR']['SOUND']) if f.endswith('.ogg')]) - 1
+    quip_num = len([f for f in os.listdir(_CONFIG['DIR']['SOUND']) if f.endswith(_FILETYPES)]) - 1
     print('total quips found {0}'.format(quip_num + 1))
 
     asyncio.run(client.run(_CONFIG['SECRETS']['TOKEN']))
